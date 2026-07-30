@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DeckSelector } from "@/components/DeckSelector";
 import { FlashcardViewer } from "@/components/FlashcardViewer";
 import { CardControls } from "@/components/CardControls";
+import { shuffle } from "@/lib/shuffle";
 import {
   TIER_ORDER,
   type FlashcardDTO,
@@ -14,15 +15,6 @@ import {
 type StudyAppProps = {
   taxonomy: TaxonomyLevel[];
 };
-
-function shuffle<T>(input: T[]): T[] {
-  const arr = [...input];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
 
 export function StudyApp({ taxonomy }: StudyAppProps) {
   // Tiers that actually have levels, in canonical order.
@@ -47,6 +39,7 @@ export function StudyApp({ taxonomy }: StudyAppProps) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const levelsForTier = useMemo(
     () => taxonomy.filter((l) => l.tier === tier),
@@ -89,18 +82,25 @@ export function StudyApp({ taxonomy }: StudyAppProps) {
 
     const load = async () => {
       setLoading(true);
+      setError(null);
       try {
         const res = await fetch(
           `/api/cards?setId=${encodeURIComponent(setId)}`
         );
-        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`Request failed: ${res.status}`);
+        }
         const data: { flashcards: FlashcardDTO[] } = await res.json();
         if (cancelled) return;
         setDeck(data.flashcards);
         setIndex(0);
         setFlipped(false);
+        setError(null);
       } catch {
-        if (!cancelled) setDeck([]);
+        if (!cancelled) {
+          setDeck([]);
+          setError("Couldn’t load this deck. Check your connection and try again.");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -180,6 +180,7 @@ export function StudyApp({ taxonomy }: StudyAppProps) {
         card={currentCard}
         flipped={flipped}
         loading={loading}
+        error={error}
         onFlip={toggleFlip}
         accentColor={currentLevel?.colorHex}
       />

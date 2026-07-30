@@ -74,8 +74,33 @@ Open http://localhost:3000.
 | `npm run build`   | Production build                                     |
 | `npm run start`   | Serve the production build                           |
 | `npm run lint`    | ESLint                                               |
+| `npm test`        | Vitest unit tests (no database required)             |
 | `npm run db:push` | `prisma db push` — sync schema to the database       |
 | `npm run seed`    | Seed the taxonomy and flashcards (`tsx prisma/seed.ts`) |
+
+## API: `GET /api/cards`
+
+Load flashcards for a card set.
+
+| Query | Description |
+| ----- | ----------- |
+| `setId` | Preferred. Card set id from the taxonomy tree. |
+| `level` | Level name (e.g. `Red`). Used when `setId` is omitted. |
+| `type` | Optional pack label (e.g. `Pack 1`). With `level`, picks that set; without `type`, first ordered set on the level. |
+
+**Status codes**
+
+| Status | When |
+| ------ | ---- |
+| `200` | `{ flashcards: FlashcardDTO[] }` (array may be empty) |
+| `400` | Missing both `setId` and `level`, or a param is blank/whitespace-only |
+| `404` | No card set matches the selection |
+| `500` | Unexpected server/database error |
+
+## Tests & CI
+
+- Unit tests cover `parseCardsQuery`, `shuffle`, and the cards route handler (Prisma mocked).
+- GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main`: `npm ci` → `prisma generate` → lint → `tsc --noEmit` → `npm test`. No Neon credentials needed.
 
 ## Project structure
 
@@ -84,6 +109,8 @@ prisma/
   schema.prisma        # prisma-client generator + Tier/Level/CardSet/Flashcard
   seed.ts              # Idempotent taxonomy + flashcard seed
 prisma.config.ts       # Prisma 7 CLI config (schema, DIRECT_URL, seed command)
+.github/workflows/
+  ci.yml               # lint + typecheck + vitest
 src/
   db/
     index.ts           # PrismaClient singleton + @prisma/adapter-pg
@@ -93,6 +120,9 @@ src/
     page.tsx           # RSC: loads the taxonomy tree, renders StudyApp
     layout.tsx         # Fonts (Assistant + Frank Ruhl Libre) + brand surface
     globals.css        # Tailwind v4 @theme brand tokens
+    robots.ts          # Disallow all crawlers (take-home)
+    error.tsx          # App Router error boundary
+    not-found.tsx      # Custom 404
     api/cards/route.ts # GET flashcards by setId, or level (+ optional type)
   components/
     StudyApp.tsx       # State, data fetching, keyboard navigation
@@ -102,6 +132,8 @@ src/
     ui/                # shadcn/ui primitives
   lib/
     taxonomy.ts        # Client-safe types + constants (no db import)
+    cards-query.ts     # Validate /api/cards query params
+    shuffle.ts         # Fisher–Yates helper
     utils.ts           # shadcn `cn` helper
 ```
 

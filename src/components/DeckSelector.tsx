@@ -91,7 +91,22 @@ export function DeckSelector({
             onValueChange={(value) => onLevelChange(value as string)}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select level" />
+              <SelectValue placeholder="Select level">
+                {(value: string) => {
+                  const selected = levels.find((level) => level.id === value);
+                  if (!selected) return null;
+                  return (
+                    <span className="flex items-center gap-2">
+                      <span
+                        aria-hidden
+                        className="size-2.5 rounded-full"
+                        style={{ backgroundColor: selected.colorHex }}
+                      />
+                      {selected.name}
+                    </span>
+                  );
+                }}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {levels.map((level) => (
@@ -117,7 +132,12 @@ export function DeckSelector({
               onValueChange={(value) => onTypeChange(value as string)}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select type" />
+                <SelectValue placeholder="Select type">
+                  {(value: string) => {
+                    const selected = cardSets.find((set) => set.id === value);
+                    return selected?.typeLabel ?? "All cards";
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {cardSets.map((set) => (

@@ -7,6 +7,7 @@ type FlashcardViewerProps = {
   card?: FlashcardDTO;
   flipped: boolean;
   loading: boolean;
+  error?: string | null;
   onFlip: () => void;
   accentColor?: string;
 };
@@ -15,6 +16,7 @@ export function FlashcardViewer({
   card,
   flipped,
   loading,
+  error,
   onFlip,
   accentColor,
 }: FlashcardViewerProps) {
@@ -23,6 +25,17 @@ export function FlashcardViewer({
       <div className="flex h-72 w-full animate-pulse flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card px-6">
         <div className="h-10 w-40 rounded-lg bg-muted" />
         <div className="h-3 w-24 rounded-full bg-muted" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        role="alert"
+        className="flex h-72 items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 text-center text-muted-foreground"
+      >
+        {error}
       </div>
     );
   }
