@@ -38,5 +38,8 @@ next-env.d.ts
 # prisma
 /prisma/*.db
 
+# prisma generated client (regenerated per-machine by `prisma generate`)
+/src/generated
+
 # project design reference (kept local only)
-citizen-cafe-design-bible.md
+*-design-bible.md
