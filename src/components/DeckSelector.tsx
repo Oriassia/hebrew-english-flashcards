@@ -8,11 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type {
-  TaxonomyCardSet,
-  TaxonomyLevel,
-  TierName,
-} from "@/lib/taxonomy";
+import type { TaxonomyLevel, TierName } from "@/lib/taxonomy";
 
 type DeckSelectorProps = {
   tiers: TierName[];
@@ -20,15 +16,14 @@ type DeckSelectorProps = {
   onTierChange: (tier: TierName) => void;
 
   levels: TaxonomyLevel[];
-  levelId: string;
-  onLevelChange: (levelId: string) => void;
+  levelName: string;
+  onLevelChange: (levelName: string) => void;
 
-  cardSets: TaxonomyCardSet[];
-  setId: string;
-  onTypeChange: (setId: string) => void;
+  types: string[];
+  type: string | null;
+  onTypeChange: (type: string) => void;
 
   levelColor?: string;
-  levelName?: string;
 };
 
 function Field({
@@ -53,16 +48,14 @@ export function DeckSelector({
   tier,
   onTierChange,
   levels,
-  levelId,
+  levelName,
   onLevelChange,
-  cardSets,
-  setId,
+  types,
+  type,
   onTypeChange,
   levelColor,
-  levelName,
 }: DeckSelectorProps) {
-  // Type selector only appears when the level has more than one card set.
-  const hasTypes = cardSets.length > 1;
+  const hasTypes = types.length > 0;
 
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-sm">
@@ -87,13 +80,13 @@ export function DeckSelector({
 
         <Field label="Level">
           <Select
-            value={levelId}
+            value={levelName}
             onValueChange={(value) => onLevelChange(value as string)}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select level">
                 {(value: string) => {
-                  const selected = levels.find((level) => level.id === value);
+                  const selected = levels.find((level) => level.name === value);
                   if (!selected) return null;
                   return (
                     <span className="flex items-center gap-2">
@@ -110,7 +103,7 @@ export function DeckSelector({
             </SelectTrigger>
             <SelectContent>
               {levels.map((level) => (
-                <SelectItem key={level.id} value={level.id}>
+                <SelectItem key={level.name} value={level.name}>
                   <span className="flex items-center gap-2">
                     <span
                       aria-hidden
@@ -125,24 +118,19 @@ export function DeckSelector({
           </Select>
         </Field>
 
-        {hasTypes && (
+        {hasTypes && type && (
           <Field label="Type">
             <Select
-              value={setId}
+              value={type}
               onValueChange={(value) => onTypeChange(value as string)}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select type">
-                  {(value: string) => {
-                    const selected = cardSets.find((set) => set.id === value);
-                    return selected?.typeLabel ?? "All cards";
-                  }}
-                </SelectValue>
+                <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                {cardSets.map((set) => (
-                  <SelectItem key={set.id} value={set.id}>
-                    {set.typeLabel ?? "All cards"}
+                {types.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -164,6 +152,7 @@ export function DeckSelector({
               style={{ backgroundColor: levelColor }}
             />
             {tier} · {levelName}
+            {type ? ` · ${type}` : ""}
           </Badge>
         </div>
       )}

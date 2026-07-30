@@ -5,19 +5,13 @@ export type TierName = "Foundation" | "Flow" | "Freedom";
 
 export const TIER_ORDER: TierName[] = ["Foundation", "Flow", "Freedom"];
 
-export type TaxonomyCardSet = {
-  id: string;
-  typeLabel: string | null;
-  order: number;
-};
-
 export type TaxonomyLevel = {
-  id: string;
   name: string;
   tier: TierName;
   colorHex: string;
   order: number;
-  cardSets: TaxonomyCardSet[];
+  /** Pack labels for this level. Empty => single untyped leaf (no type selector). */
+  types: string[];
 };
 
 export type FlashcardDTO = {

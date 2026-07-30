@@ -17,9 +17,12 @@ Prev / Next / Shuffle or your keyboard.
 ```
 Tier (enum: Foundation | Flow | Freedom)
 Level  (name, tier, colorHex, order)
-  └─ CardSet (typeLabel | null, order)      # null = untyped level; else "Pack N"
-       └─ Flashcard (hebrew, english, transliteration, order)
+  └─ Flashcard (type | null, hebrew, english, transliteration, order)
+       # type null = single-set level; else "Pack N"
 ```
+
+Seed leaves match the assignment shape `{ level, type, pairs }` in
+[`prisma/data.ts`](prisma/data.ts).
 
 Only [`src/db/index.ts`](src/db/index.ts) instantiates `PrismaClient` (wrapped with
 the pg adapter). Server code reads through `@/db`; components never import Prisma.
@@ -80,21 +83,27 @@ Open http://localhost:3000.
 
 ## API: `GET /api/cards`
 
-Load flashcards for a card set.
+Load flashcards for one leaf — a level, or a level + type:
+
+```
+GET /api/cards?level=Red
+GET /api/cards?level=Dark%20Green&type=Pack%201
+```
 
 | Query | Description |
 | ----- | ----------- |
-| `setId` | Preferred. Card set id from the taxonomy tree. |
-| `level` | Level name (e.g. `Red`). Used when `setId` is omitted. |
-| `type` | Optional pack label (e.g. `Pack 1`). With `level`, picks that set; without `type`, first ordered set on the level. |
+| `level` | **Required.** Level name, e.g. `Red`, `Dark Green` |
+| `type` | Optional pack label, e.g. `Pack 1`. Omit for untyped levels |
+
+Changing Tier / Level / Type in the UI updates `level` / `type` and refetches.
 
 **Status codes**
 
 | Status | When |
 | ------ | ---- |
-| `200` | `{ flashcards: FlashcardDTO[] }` (array may be empty) |
-| `400` | Missing both `setId` and `level`, or a param is blank/whitespace-only |
-| `404` | No card set matches the selection |
+| `200` | `{ flashcards: FlashcardDTO[] }` |
+| `400` | Missing/blank `level`, or blank `type` when provided |
+| `404` | Unknown level, or no cards for that level + type leaf |
 | `500` | Unexpected server/database error |
 
 ## Tests & CI
@@ -106,8 +115,9 @@ Load flashcards for a card set.
 
 ```
 prisma/
-  schema.prisma        # prisma-client generator + Tier/Level/CardSet/Flashcard
-  seed.ts              # Idempotent taxonomy + flashcard seed
+  schema.prisma        # prisma-client generator + Tier/Level/Flashcard
+  data.ts              # LEVEL_META + assignment-shaped LEAVES
+  seed.ts              # Idempotent seed from leaves
 prisma.config.ts       # Prisma 7 CLI config (schema, DIRECT_URL, seed command)
 .github/workflows/
   ci.yml               # lint + typecheck + vitest
@@ -123,7 +133,7 @@ src/
     robots.ts          # Disallow all crawlers (take-home)
     error.tsx          # App Router error boundary
     not-found.tsx      # Custom 404
-    api/cards/route.ts # GET flashcards by setId, or level (+ optional type)
+    api/cards/route.ts # GET flashcards by level (+ optional type)
   components/
     StudyApp.tsx       # State, data fetching, keyboard navigation
     DeckSelector.tsx   # Cascading Tier → Level → Type selects + colour badge

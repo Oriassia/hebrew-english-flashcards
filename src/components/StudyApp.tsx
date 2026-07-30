@@ -17,7 +17,6 @@ type StudyAppProps = {
 };
 
 export function StudyApp({ taxonomy }: StudyAppProps) {
-  // Tiers that actually have levels, in canonical order.
   const tiers = useMemo(
     () => TIER_ORDER.filter((t) => taxonomy.some((l) => l.tier === t)),
     [taxonomy]
@@ -30,9 +29,9 @@ export function StudyApp({ taxonomy }: StudyAppProps) {
   );
 
   const [tier, setTier] = useState<TierName>(firstTier);
-  const [levelId, setLevelId] = useState<string>(firstLevel?.id ?? "");
-  const [setId, setSetId] = useState<string>(
-    firstLevel?.cardSets[0]?.id ?? ""
+  const [levelName, setLevelName] = useState<string>(firstLevel?.name ?? "");
+  const [type, setType] = useState<string | null>(
+    firstLevel?.types[0] ?? null
   );
 
   const [deck, setDeck] = useState<FlashcardDTO[]>([]);
@@ -46,47 +45,46 @@ export function StudyApp({ taxonomy }: StudyAppProps) {
     [taxonomy, tier]
   );
   const currentLevel = useMemo(
-    () => taxonomy.find((l) => l.id === levelId),
-    [taxonomy, levelId]
+    () => taxonomy.find((l) => l.name === levelName),
+    [taxonomy, levelName]
   );
 
-  // Cascade resets: choosing a tier selects its first level + first set.
   const handleTierChange = useCallback(
     (nextTier: TierName) => {
       setTier(nextTier);
       const nextLevel = taxonomy.find((l) => l.tier === nextTier);
-      setLevelId(nextLevel?.id ?? "");
-      setSetId(nextLevel?.cardSets[0]?.id ?? "");
+      setLevelName(nextLevel?.name ?? "");
+      setType(nextLevel?.types[0] ?? null);
     },
     [taxonomy]
   );
 
-  // Choosing a level selects its first set (type).
   const handleLevelChange = useCallback(
-    (nextLevelId: string) => {
-      setLevelId(nextLevelId);
-      const nextLevel = taxonomy.find((l) => l.id === nextLevelId);
-      setSetId(nextLevel?.cardSets[0]?.id ?? "");
+    (nextLevelName: string) => {
+      setLevelName(nextLevelName);
+      const nextLevel = taxonomy.find((l) => l.name === nextLevelName);
+      setType(nextLevel?.types[0] ?? null);
     },
     [taxonomy]
   );
 
-  const handleTypeChange = useCallback((nextSetId: string) => {
-    setSetId(nextSetId);
+  const handleTypeChange = useCallback((nextType: string) => {
+    setType(nextType);
   }, []);
 
-  // Fetch the deck whenever the selected card set changes.
+  // Refetch whenever the leaf selection (level + type) changes.
   useEffect(() => {
-    if (!setId) return;
+    if (!levelName) return;
     let cancelled = false;
 
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(
-          `/api/cards?setId=${encodeURIComponent(setId)}`
-        );
+        const params = new URLSearchParams({ level: levelName });
+        if (type) params.set("type", type);
+
+        const res = await fetch(`/api/cards?${params.toString()}`);
         if (!res.ok) {
           throw new Error(`Request failed: ${res.status}`);
         }
@@ -99,7 +97,9 @@ export function StudyApp({ taxonomy }: StudyAppProps) {
       } catch {
         if (!cancelled) {
           setDeck([]);
-          setError("Couldn’t load this deck. Check your connection and try again.");
+          setError(
+            "Couldn’t load this deck. Check your connection and try again."
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -110,7 +110,7 @@ export function StudyApp({ taxonomy }: StudyAppProps) {
     return () => {
       cancelled = true;
     };
-  }, [setId]);
+  }, [levelName, type]);
 
   const goNext = useCallback(() => {
     setFlipped(false);
@@ -130,7 +130,6 @@ export function StudyApp({ taxonomy }: StudyAppProps) {
     setFlipped(false);
   }, []);
 
-  // Keyboard navigation: arrows to move, space/up/down to flip.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -167,13 +166,12 @@ export function StudyApp({ taxonomy }: StudyAppProps) {
         tier={tier}
         onTierChange={handleTierChange}
         levels={levelsForTier}
-        levelId={levelId}
+        levelName={levelName}
         onLevelChange={handleLevelChange}
-        cardSets={currentLevel?.cardSets ?? []}
-        setId={setId}
+        types={currentLevel?.types ?? []}
+        type={type}
         onTypeChange={handleTypeChange}
         levelColor={currentLevel?.colorHex}
-        levelName={currentLevel?.name}
       />
 
       <FlashcardViewer

@@ -3,15 +3,15 @@ import { db } from "@/db";
 import { parseCardsQuery } from "@/lib/cards-query";
 import type { FlashcardDTO } from "@/lib/taxonomy";
 
-// GET /api/cards
-//   ?setId=<cardSetId>                          preferred (client knows the id)
-//   ?level=<levelName>&type=<typeLabel>         fallback resolution
-// `type` is optional; when omitted the first (ordered) set on the level is used.
+// GET /api/cards?level=<levelName>&type=<typeLabel?>
+//
+// level — required level name (e.g. "Red", "Dark Green")
+// type  — optional pack label (e.g. "Pack 1"). Omit for untyped levels.
 //
 // Status codes:
-//   200 — { flashcards } (may be empty)
-//   400 — malformed / missing query params
-//   404 — card set not found for the given selection
+//   200 — { flashcards } (may be empty only if leaf exists with zero cards)
+//   400 — missing/empty required params
+//   404 — level or leaf not found
 //   500 — unexpected server/DB error
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -25,27 +25,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    let cardSetId: string | undefined;
+    const level = await db.level.findUnique({
+      where: { name: parsed.level },
+      select: { id: true },
+    });
 
-    if (parsed.mode === "setId") {
-      const existing = await db.cardSet.findUnique({
-        where: { id: parsed.setId },
-        select: { id: true },
-      });
-      cardSetId = existing?.id;
-    } else {
-      const cardSet = await db.cardSet.findFirst({
-        where: {
-          level: { name: parsed.level },
-          ...(parsed.type ? { typeLabel: parsed.type } : {}),
-        },
-        orderBy: { order: "asc" },
-        select: { id: true },
-      });
-      cardSetId = cardSet?.id;
-    }
-
-    if (!cardSetId) {
+    if (!level) {
       return NextResponse.json(
         { error: "Card set not found for the given selection." },
         { status: 404 }
@@ -53,7 +38,10 @@ export async function GET(request: Request) {
     }
 
     const flashcards: FlashcardDTO[] = await db.flashcard.findMany({
-      where: { cardSetId },
+      where: {
+        levelId: level.id,
+        type: parsed.type,
+      },
       orderBy: { order: "asc" },
       select: {
         id: true,
@@ -63,6 +51,13 @@ export async function GET(request: Request) {
         order: true,
       },
     });
+
+    if (flashcards.length === 0) {
+      return NextResponse.json(
+        { error: "Card set not found for the given selection." },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ flashcards });
   } catch {

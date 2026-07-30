@@ -1,25 +1,27 @@
 import { db } from "@/db";
 import type { TaxonomyLevel, TierName } from "@/lib/taxonomy";
 
-// Loads the full Tier -> Level -> CardSet tree (no card bodies) for the
-// cascading selectors. Server-only: imports the db singleton.
+// Loads levels + distinct type labels (no card bodies) for cascading selectors.
 export async function getTaxonomy(): Promise<TaxonomyLevel[]> {
   const levels = await db.level.findMany({
     orderBy: { order: "asc" },
     include: {
-      cardSets: {
-        orderBy: { order: "asc" },
-        select: { id: true, typeLabel: true, order: true },
+      flashcards: {
+        where: { type: { not: null } },
+        select: { type: true },
+        distinct: ["type"],
+        orderBy: { type: "asc" },
       },
     },
   });
 
   return levels.map((level) => ({
-    id: level.id,
     name: level.name,
     tier: level.tier as TierName,
     colorHex: level.colorHex,
     order: level.order,
-    cardSets: level.cardSets,
+    types: level.flashcards
+      .map((f) => f.type)
+      .filter((t): t is string => t !== null),
   }));
 }
