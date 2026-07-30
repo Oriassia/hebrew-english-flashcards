@@ -1,0 +1,45 @@
+// Prisma 7: TS client generator emitting into the project (not node_modules).
+// Runtime connection is provided by a driver adapter (see src/db/index.ts),
+// so the datasource block only declares the provider.
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Tier {
+  Foundation
+  Flow
+  Freedom
+}
+
+model Level {
+  id       String    @id @default(cuid())
+  name     String    @unique // "Red", "Dark Green", ...
+  tier     Tier
+  colorHex String // UI accent
+  order    Int
+  cardSets CardSet[]
+}
+
+model CardSet {
+  id         String      @id @default(cuid())
+  level      Level       @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  levelId    String
+  typeLabel  String? // null = untyped level; otherwise "Pack 1"...
+  order      Int
+  flashcards Flashcard[]
+}
+
+model Flashcard {
+  id              String  @id @default(cuid())
+  cardSet         CardSet @relation(fields: [cardSetId], references: [id], onDelete: Cascade)
+  cardSetId       String
+  hebrew          String
+  english         String
+  transliteration String?
+  order           Int
+}
